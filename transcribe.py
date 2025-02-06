@@ -1,7 +1,13 @@
 import whisper
 import torch
+import warnings
 
-model = whisper.load_model("base")  # or "tiny", "small", "medium", "large"
+warnings.filterwarnings("ignore", message="FP16 is not supported on CPU")
 
-result = model.transcribe("example.m4a")  # Just pass the .m4a file
+device = "cpu"#"mps" if torch.backends.mps.is_available() else "cpu"
+model = whisper.load_model("small", device=device)  # or "tiny", "small", "medium", "large"
+
+result = model.transcribe("example.m4a", language="en")  # Just pass the .m4a file
 print(result["text"])
+
+

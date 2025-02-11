@@ -2,11 +2,14 @@ import requests
 import json
 import os
 from pydub import AudioSegment
+import base64
 
 # Configuration
 WHISPER_API_URL = "http://localhost:8080/inference"  # Updated for correct endpoint
 OLLAMA_API_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3.2"  # Change based on available models
+STABLE_DIFFUSION_URL = "http://localhost:7860/sdapi/v1/txt2img"  # Adjust if needed
+
 
 # Function to convert audio to WAV (Whisper.cpp prefers WAV)
 def convert_audio_to_wav(input_audio_path, output_wav_path):
@@ -50,6 +53,34 @@ def reprocess_text_with_ollama(text, guiding_prompt):
     else:
         raise Exception(f"Ollama API error: {response.text}")
 
+def generate_sd_image(prompt, output_folder="generated_images"):
+    os.makedirs(output_folder, exist_ok=True)  # Ensure output folder exists
+
+    payload = {
+        "prompt": prompt,
+        "steps": 10,  # Adjust as needed
+        "cfg_scale": 7.5,  # Adjust as needed
+        "width": 512,  # Adjust as needed
+        "height": 512,  # Adjust as needed
+        "sampler_index": "Euler a"
+    }
+
+    response = requests.post(STABLE_DIFFUSION_URL, json=payload)
+    
+    if response.status_code == 200:
+        result = response.json()
+        images = result.get("images", [])
+        if images:
+            # Convert base64 image to file
+            img_data = images[0]
+            img_path = os.path.join(output_folder, f"{prompt[:50].replace(' ', '_')}.png")  # Shorten filename
+            with open(img_path, "wb") as f:
+                f.write(base64.b64decode(img_data))
+            print(f"Saved: {img_path}")
+            return img_path
+    else:
+        raise Exception(f"Stable Diffusion API error: {response.text}")
+    
 # Main function
 def process_audio(input_audio_path, guiding_prompt):
     wav_path = "temp.wav"
@@ -61,16 +92,32 @@ def process_audio(input_audio_path, guiding_prompt):
 
     print("Reprocessing text with Ollama...")
     reprocessed_text = reprocess_text_with_ollama(transcription, guiding_prompt)
-    #print("Reprocessed Text:", reprocessed_text)
+    print("Reprocessed Text:", reprocessed_text)
+
+    try:
+        response = json.loads(reprocessed_text)
+    except json.JSONDecodeError as e:
+        raise Exception(f"Error decoding JSON: {e}\nResponse received: {processed_data}")
+
+    sd_prompt = response.get("sd-prompt", [])
+
+    print(f"Generating {len(sd_prompt)} images with Stable Diffusion...")
+
+    # Process each prompt with Stable Diffusion
+    for prompt in sd_prompt:
+        print(f"   - {prompt}")
+        generate_sd_image(prompt)
 
     # Cleanup temporary file
     os.remove(wav_path)
     return reprocessed_text
 
+
+    
 # Example usage
 if __name__ == "__main__":
     input_audio = "o3mini-summer.wav"  # Change this to your audio file path
-    guiding_prompt = """Give me a stream of conciousness response to this poem. It should not be literal. You can be creative. Don't use cliches or overused metaphor. Your response should be rich in imagery, but poetic in its own right. The final output should be a series of text prompts suitable for input into stable diffusion for generation of a sequence of images that accompany the poem. The goal ios not to illustrate the poem, rather create an evocative, immersive and compelling environment for the viewer to inhabit while they contemplate the poem. Do not give explanation or any further questions. Just give the stream of consciousness and the stable diffusion prompts. Give your output as a valid, structured JSON file with one field "response" for the stream of conciousness and another field "sd-prompt" which is an array of strings containing the stable diffusion prompts."""
+    guiding_prompt = """Give me a stream of conciousness response to this poem. It should not be literal. You can be creative. Don't use cliches or overused metaphor. Your response should be rich in imagery, but poetic in its own right. The final output should be a series of text prompts suitable for input into stable diffusion for generation of a sequence of images that accompany the poem. The goal ios not to illustrate the poem, rather create an evocative, immersive and compelling environment for the viewer to inhabit while they contemplate the poem. Do not give explanation or any further questions. Just give the stream of consciousness and the stable diffusion prompts. Give your output as a valid, structured, raw JSON file with one field "response" for the stream of conciousness and another field "sd-prompt" which is an array of strings containing the stable diffusion prompts. Do not include triple backticks in your output."""
     
     output_text = process_audio(input_audio, guiding_prompt)
     

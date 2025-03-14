@@ -3,6 +3,48 @@ import queue
 import time
 
 class VariableHandler:
+    """
+    A threaded variable management system that allows external tasks to update 
+    registered variables asynchronously via a queue.
+
+    This class maintains a registry of variables identified by unique string 
+    identifiers. Other tasks can send (identifier, value) pairs to a queue, 
+    and a background handler thread updates the corresponding registered variables.
+
+    Variable References:
+    --------------------
+    Since Python variables are immutable by default (e.g., integers, strings),
+    mutable containers such as lists or dictionaries are used to store references.
+    The registered variable must be a mutable container (e.g., `[value]` for a single
+    value) so that updates modify the contained value rather than reassigning a local
+    variable.
+
+    Example Usage:
+    --------------
+    ```python
+    handler = VariableHandler()
+
+    my_var = [0]  # Using a list to hold a mutable reference
+    handler.register("speed", my_var)
+
+    handler.update_variable("speed", 42)  # Update via the handler
+    time.sleep(0.5)  # Allow handler to process the update
+
+    print(my_var[0])  # Output: 42
+    handler.stop()
+    ```
+    
+    Methods:
+    --------
+    - `register(identifier: str, variable_ref: list)`: Registers a variable reference.
+    - `update_variable(identifier: str, value)`: Sends an update request to the queue.
+    - `stop()`: Stops the handler thread safely.
+
+    Thread Safety:
+    --------------
+    A threading lock (`self.lock`) ensures safe access to the registry across multiple threads.
+    """
+    
     def __init__(self):
         self.registry = {}  # Stores variable references
         self.queue = queue.Queue()

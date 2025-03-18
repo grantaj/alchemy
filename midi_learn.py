@@ -3,6 +3,7 @@ import threading
 import queue
 import json
 import os
+from variable_handler import VariableHandler
 
 PORT_NAME = "Launch Control XL"
 
@@ -80,7 +81,7 @@ def learn_mode():
             break  # Exit learn mode
 
 # Perform Mode
-def perform_mode():
+def perform_mode(handler):
     print("\n--- Perform Mode Activated ---")
     print("Listening for incoming MIDI messages... (Press Enter to exit)")
     
@@ -98,7 +99,8 @@ def perform_mode():
             msg_key = f"{msg.type}_{msg.note if msg.type in ['note_on', 'note_off'] else msg.control}"
             
             if msg_key in midi_mappings:
-                print(f"Function: {midi_mappings[msg_key]}, Value: {msg.value}")
+                handler.update_variable(midi_mappings[msg_key], msg.value)
+                #print(f"Function: {midi_mappings[msg_key]}, Value: {msg.value}")
             else:
                 print(f"Unmapped MIDI message: {msg}")
         except queue.Empty:
@@ -108,6 +110,15 @@ def perform_mode():
             
 # Main menu
 def main_menu():
+    handler = VariableHandler()
+    fader_0 = [0]
+    fader_1 = [0]
+    knob_0 = [0]
+
+    handler.register("fader_0", fader_0)
+    handler.register("fader_1", fader_1)
+    handler.register("knob_0", knob_0)
+    
     while True:
         print("\n--- MIDI Learn Mode CLI ---")
         print("1. Enter Learn Mode")
@@ -131,7 +142,10 @@ def main_menu():
         elif choice == "4":
             load_mappings()
         elif choice == "5":
-            perform_mode()
+            perform_mode(handler)
+            print(f"fader_0 {fader_0}")
+            print(f"fader_1 {fader_1}")
+            print(f"knob_0 {knob_0}")
         elif choice == "q":
             print("Exiting...")
             break

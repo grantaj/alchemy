@@ -79,6 +79,33 @@ def learn_mode():
             print("Learn mode timed out. No MIDI message received.")
             break  # Exit learn mode
 
+# Perform Mode
+def perform_mode():
+    print("\n--- Perform Mode Activated ---")
+    print("Listening for incoming MIDI messages... (Press Enter to exit)")
+    
+    stop_flag = threading.Event()
+    def listen_for_exit():
+        input()  # Wait for user to press Enter
+        stop_flag.set()
+    
+    exit_thread = threading.Thread(target=listen_for_exit, daemon=True)
+    exit_thread.start()
+    
+    while not stop_flag.is_set():
+        try:
+            msg = midi_queue.get(timeout=1)  # Check for messages every second
+            msg_key = f"{msg.type}_{msg.note if msg.type in ['note_on', 'note_off'] else msg.control}"
+            
+            if msg_key in midi_mappings:
+                print(f"Function: {midi_mappings[msg_key]}, Value: {msg.value}")
+            else:
+                print(f"Unmapped MIDI message: {msg}")
+        except queue.Empty:
+            pass  # No messages, just continue checking
+    
+    print("Exiting Perform Mode...")
+            
 # Main menu
 def main_menu():
     while True:
@@ -87,7 +114,9 @@ def main_menu():
         print("2. Show Mappings")
         print("3. Save Mappings")
         print("4. Load Mappings")
-        print("5. Exit")
+        print("5. Perform")
+        print("6. Exit")
+
 
         choice = input("Choose an option: ").strip()
         
@@ -102,6 +131,8 @@ def main_menu():
         elif choice == "4":
             load_mappings()
         elif choice == "5":
+            perform_mode()
+        elif choice == "q":
             print("Exiting...")
             break
         else:

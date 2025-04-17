@@ -1,2 +1,6 @@
 # Ignore virtual environment directories
 venv/
+
+# PySpout 
+PySpout.pyd
+Spout.dll

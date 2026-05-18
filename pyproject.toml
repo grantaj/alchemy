@@ -1,0 +1,43 @@
+[project]
+name = "alchemy"
+version = "0.1.0"
+description = "Local spoken-word-to-image controller for ComfyUI."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "python-dotenv>=1.0",
+  "requests>=2.32",
+  "websocket-client>=1.8",
+]
+
+[project.optional-dependencies]
+audio = [
+  "numpy>=1.26",
+  "sounddevice>=0.4",
+  "soundfile>=0.12",
+]
+whisper = [
+  "faster-whisper>=1.0",
+]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5",
+]
+
+[project.scripts]
+alchemy-doctor = "alchemy.cli.doctor:main"
+alchemy-refine = "alchemy.cli.refine_prompt:main"
+alchemy-submit = "alchemy.cli.submit_prompt:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

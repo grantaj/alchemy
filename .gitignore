@@ -1,5 +1,17 @@
 # Ignore virtual environment directories
 venv/
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Local configuration
+.env
+
+# Runtime output
+output/current.png
+output/archive/
 
 # PySpout 
 PySpout.pyd

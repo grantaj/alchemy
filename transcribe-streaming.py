@@ -10,7 +10,7 @@ import warnings
 warnings.filterwarnings("ignore", message="FP16 is not supported on CPU")
 
 # Load Whisper model
-model = whisper.load_model("base", device="cpu")
+model = whisper.load_model("turbo", device="cpu")
 
 # Audio parameters
 SAMPLE_RATE = 16000  # Match Whisper's preferred input rate

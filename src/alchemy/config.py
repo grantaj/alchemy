@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     comfy_output_dir: Path | None = Field(default=None, alias="COMFY_OUTPUT_DIR")
     ollama_host: str = Field(default="http://127.0.0.1:11434", alias="OLLAMA_HOST")
     ollama_model: str = Field(default="llama3.2:3b", alias="OLLAMA_MODEL")
+    whisper_cpp_host: str = Field(default="http://127.0.0.1:8080", alias="WHISPER_CPP_HOST")
+    whisper_cpp_inference_path: str = Field(
+        default="/inference",
+        alias="WHISPER_CPP_INFERENCE_PATH",
+    )
 
     alchemy_output_dir: Path = Field(default=Path("output"), alias="ALCHEMY_OUTPUT_DIR")
     alchemy_workflow: Path = Field(
@@ -51,6 +56,10 @@ class Settings(BaseSettings):
     @property
     def comfy_ws_url(self) -> str:
         return f"ws://{self.comfy_host}:{self.comfy_port}/ws"
+
+    @property
+    def whisper_cpp_inference_url(self) -> str:
+        return f"{self.whisper_cpp_host.rstrip('/')}/{self.whisper_cpp_inference_path.lstrip('/')}"
 
 
 def load_settings() -> Settings:

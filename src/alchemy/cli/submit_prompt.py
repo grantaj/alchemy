@@ -1,13 +1,11 @@
 import argparse
 from pathlib import Path
 
-from alchemy.comfy_client import ComfyClient
 from alchemy.config import load_settings
-from alchemy.image_state import copy_current_image
+from alchemy.generation import submit_txt2img
 from alchemy.ollama_client import OllamaClient
 from alchemy.prompt_agent import refine_prompt
 from alchemy.prompt_profile import load_prompt_profile
-from alchemy.workflow import load_workflow, prepare_txt2img_workflow
 
 
 def parse_args() -> argparse.Namespace:
@@ -52,33 +50,14 @@ def main() -> None:
         print("Refined prompt:")
         print(f"  {positive_prompt}")
 
-    workflow = load_workflow(workflow_path)
-    prepared = prepare_txt2img_workflow(
-        workflow,
+    submit_txt2img(
+        settings,
         positive_prompt=positive_prompt,
         negative_prompt=negative_prompt,
+        workflow_path=workflow_path,
         seed=args.seed,
         filename_prefix=args.prefix,
     )
-
-    client = ComfyClient(settings.comfy_base_url, settings.comfy_ws_url)
-    prompt_id = client.submit(prepared)
-    print(f"Submitted prompt {prompt_id}")
-
-    client.wait_for_prompt(prompt_id)
-    output = client.first_image_output(prompt_id)
-
-    if settings.comfy_output_dir is None:
-        print("Generated image:")
-        print(f"  filename={output.filename}")
-        print(f"  subfolder={output.subfolder}")
-        print(f"  type={output.type}")
-        print("Set COMFY_OUTPUT_DIR to copy this image to output/current.png.")
-        return
-
-    source = settings.comfy_output_dir / output.subfolder / output.filename
-    current = copy_current_image(source, settings.alchemy_current_image)
-    print(f"Updated {current}")
 
 
 if __name__ == "__main__":

@@ -26,6 +26,7 @@ def run_checks(settings: Settings) -> list[CheckResult]:
         check_comfy_output_dir(settings.comfy_output_dir),
         check_workflow_checkpoint(settings),
         check_ollama(settings),
+        check_whisper_cpp(settings),
     ]
 
 
@@ -175,6 +176,32 @@ def check_ollama(settings: Settings) -> CheckResult:
         )
 
     return CheckResult("Ollama service", True, f"Using {settings.ollama_model}")
+
+
+def check_whisper_cpp(settings: Settings) -> CheckResult:
+    try:
+        response = requests.options(settings.whisper_cpp_inference_url, timeout=5)
+    except requests.RequestException as error:
+        return CheckResult(
+            "whisper.cpp service",
+            False,
+            f"Could not reach {settings.whisper_cpp_inference_url}: {error}",
+            "Start whisper-server and confirm the configured inference endpoint is reachable.",
+        )
+
+    if response.status_code >= 500:
+        return CheckResult(
+            "whisper.cpp service",
+            False,
+            f"{settings.whisper_cpp_inference_url} returned HTTP {response.status_code}",
+            "Check whisper-server logs and WHISPER_CPP_* settings in .env.",
+        )
+
+    return CheckResult(
+        "whisper.cpp service",
+        True,
+        f"Endpoint reachable at {settings.whisper_cpp_inference_url}",
+    )
 
 
 def _workflow_checkpoint_name(workflow: dict[str, Any]) -> str | None:

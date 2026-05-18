@@ -28,8 +28,10 @@ dev = [
 
 [project.scripts]
 alchemy-doctor = "alchemy.cli.doctor:main"
+alchemy-from-audio = "alchemy.cli.from_audio:main"
 alchemy-refine = "alchemy.cli.refine_prompt:main"
 alchemy-submit = "alchemy.cli.submit_prompt:main"
+alchemy-transcribe = "alchemy.cli.transcribe_audio:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -79,7 +79,57 @@ OLLAMA_MODEL=llama3.2:3b
 
 You can use a different installed Ollama model by changing `OLLAMA_MODEL`.
 
-### 3. Install uv
+### 3. Install whisper.cpp
+
+Install whisper.cpp separately from this repository.
+
+Official install docs:
+
+- <https://github.com/ggml-org/whisper.cpp>
+
+Build from source:
+
+```bash
+git clone https://github.com/ggml-org/whisper.cpp.git
+cd whisper.cpp
+cmake -B build
+cmake --build build -j --config Release
+```
+
+Download a model. Start with `base.en` or `small.en` for fast local testing:
+
+```bash
+./models/download-ggml-model.sh base.en
+```
+
+Start the HTTP server:
+
+```bash
+./build/bin/whisper-server \
+  -m models/ggml-base.en.bin \
+  --host 127.0.0.1 \
+  --port 8080
+```
+
+The default `.env.example` expects:
+
+```bash
+WHISPER_CPP_HOST=http://127.0.0.1:8080
+WHISPER_CPP_INFERENCE_PATH=/inference
+```
+
+The project uses this endpoint for file-based transcription.
+
+Install `ffmpeg` if you want to transcribe compressed audio such as `.m4a`:
+
+```bash
+brew install ffmpeg
+```
+
+The controller converts non-WAV files to temporary 16 kHz mono WAV files before
+sending them to whisper.cpp.
+
+### 4. Install uv
 
 This project uses `uv` for Python packaging and dependency management.
 
@@ -89,7 +139,7 @@ On macOS with Homebrew:
 brew install uv
 ```
 
-### 4. Install project dependencies
+### 5. Install project dependencies
 
 From the repository root:
 
@@ -100,7 +150,7 @@ uv sync
 This creates a local `.venv` and installs the package dependencies from
 `pyproject.toml`.
 
-### 5. Configure local paths
+### 6. Configure local paths
 
 Create a local `.env` file from the example:
 
@@ -142,8 +192,38 @@ It checks:
 - The workflow checkpoint is visible to ComfyUI.
 - Ollama is reachable.
 - The configured Ollama model is installed.
+- whisper.cpp's inference endpoint is reachable.
 
 When a check fails, the command prints the next action to take.
+
+## Speech-To-Text Direction
+
+The first transcription backend will be whisper.cpp over its local HTTP server.
+This matches the rest of the system: local-first, scriptable, and easy for
+`alchemy-doctor` to detect.
+
+For the demo, the first speech milestone should be file-based:
+
+```text
+example spoken poem
+  -> whisper.cpp transcription
+  -> Ollama prompt profile
+  -> ComfyUI image
+```
+
+After that, microphone capture can be added as phrase-based transcription.
+
+Other options may be useful later:
+
+- `faster-whisper`: good Python ergonomics, but less directly aligned with
+  Apple Silicon/Metal than whisper.cpp.
+- Vosk/Vosk server: fast and stream-oriented, but generally less rich for
+  poetic spoken-word transcription than Whisper-class models.
+- WhisperKit or MLX-based tools: promising on Apple Silicon, but would add a
+  different integration surface than the current Python/HTTP controller.
+
+So the current plan is: use whisper.cpp first, keep the STT module abstract
+enough to swap later.
 
 ## First Tests
 
@@ -187,6 +267,28 @@ To see the full JSON packet:
 
 ```bash
 uv run alchemy-refine --json "the room remembers a storm that has not arrived yet"
+```
+
+To transcribe an audio file with whisper.cpp:
+
+```bash
+uv run alchemy-transcribe example-poem-a-summar-day.m4a
+```
+
+To run the current full file-based path:
+
+```bash
+uv run alchemy-from-audio example-poem-a-summar-day.m4a
+```
+
+That performs:
+
+```text
+audio file
+  -> whisper.cpp transcription
+  -> Ollama prompt profile
+  -> ComfyUI image
+  -> output/current.png
 ```
 
 ## Prompt Profiles

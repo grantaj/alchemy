@@ -275,6 +275,13 @@ To transcribe an audio file with whisper.cpp:
 uv run alchemy-transcribe example-poem-a-summar-day.m4a
 ```
 
+To inspect timestamped segments or configured chunks:
+
+```bash
+uv run alchemy-transcribe --segments example-poem-a-summar-day.m4a
+uv run alchemy-transcribe --chunks example-poem-a-summar-day.m4a
+```
+
 To run the current full file-based path:
 
 ```bash
@@ -289,6 +296,12 @@ audio file
   -> Ollama prompt profile
   -> ComfyUI image
   -> output/current.png
+```
+
+To generate a sequence of images from transcript chunks:
+
+```bash
+uv run alchemy-from-audio --chunked example-poem-a-summar-day.m4a
 ```
 
 ## Prompt Profiles
@@ -330,6 +343,32 @@ The expected Ollama JSON response is:
 
 The controller pins `negative_prompt` from configuration after parsing, so the
 LLM can focus on the poetic response and positive image prompt.
+
+## Transcript Chunking
+
+Longer transcriptions can be split into semi-streaming chunks before prompt
+refinement.
+
+Chunking is configured with environment variables:
+
+```bash
+ALCHEMY_CHUNK_MAX_SECONDS=8.0
+ALCHEMY_CHUNK_MAX_WORDS=35
+ALCHEMY_CHUNK_MIN_WORDS=5
+ALCHEMY_CHUNK_MIN_SILENCE_GAP=0.7
+ALCHEMY_CHUNK_PREFER_SENTENCE_BOUNDARY=true
+ALCHEMY_CHUNK_SENTENCE_PUNCTUATION=.?!;:
+```
+
+The chunker tries to keep chunks natural by using whisper.cpp word timestamps,
+silence gaps, duration limits, word-count limits, and punctuation boundaries.
+
+Useful test overrides:
+
+```bash
+uv run alchemy-transcribe --chunks example-poem-a-summar-day.m4a --max-words 20 --max-seconds 6
+uv run alchemy-from-audio --chunked example-poem-a-summar-day.m4a --max-words 20 --max-seconds 6
+```
 
 ## Project Structure
 

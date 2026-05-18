@@ -48,6 +48,21 @@ class Settings(BaseSettings):
         ),
         alias="ALCHEMY_STYLE",
     )
+    alchemy_chunk_max_seconds: float = Field(default=8.0, alias="ALCHEMY_CHUNK_MAX_SECONDS")
+    alchemy_chunk_max_words: int = Field(default=35, alias="ALCHEMY_CHUNK_MAX_WORDS")
+    alchemy_chunk_min_words: int = Field(default=5, alias="ALCHEMY_CHUNK_MIN_WORDS")
+    alchemy_chunk_min_silence_gap: float = Field(
+        default=0.7,
+        alias="ALCHEMY_CHUNK_MIN_SILENCE_GAP",
+    )
+    alchemy_chunk_prefer_sentence_boundary: bool = Field(
+        default=True,
+        alias="ALCHEMY_CHUNK_PREFER_SENTENCE_BOUNDARY",
+    )
+    alchemy_chunk_sentence_punctuation: str = Field(
+        default=".?!;:",
+        alias="ALCHEMY_CHUNK_SENTENCE_PUNCTUATION",
+    )
 
     @property
     def comfy_base_url(self) -> str:

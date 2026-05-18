@@ -6,6 +6,7 @@ from alchemy.config import load_settings
 from alchemy.image_state import copy_current_image
 from alchemy.ollama_client import OllamaClient
 from alchemy.prompt_agent import refine_prompt
+from alchemy.prompt_profile import load_prompt_profile
 from alchemy.workflow import load_workflow, prepare_txt2img_workflow
 
 
@@ -17,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workflow", type=Path, help="Workflow JSON path.")
     parser.add_argument("--prefix", default="alchemy", help="ComfyUI output filename prefix.")
     parser.add_argument("--refine", action="store_true", help="Refine the prompt with Ollama first.")
+    parser.add_argument("--profile", type=Path, help="Prompt profile TOML path for --refine.")
     parser.add_argument("--style", help="Pinned visual style override for --refine.")
     parser.add_argument("--previous-prompt", default="", help="Previous prompt context for --refine.")
     parser.add_argument("--state-summary", default="", help="Previous visual state context for --refine.")
@@ -33,9 +35,11 @@ def main() -> None:
 
     if args.refine:
         ollama = OllamaClient(settings.ollama_host, settings.ollama_model)
+        profile = load_prompt_profile(args.profile or settings.alchemy_prompt_profile)
         packet = refine_prompt(
             ollama,
-            phrase=args.prompt,
+            transcription=args.prompt,
+            profile=profile,
             style=args.style or settings.alchemy_style,
             previous_prompt=args.previous_prompt,
             state_summary=args.state_summary,
@@ -43,6 +47,8 @@ def main() -> None:
         )
         positive_prompt = packet.positive_prompt
         negative_prompt = packet.negative_prompt
+        print("Poetic response:")
+        print(f"  {packet.poetic_response}")
         print("Refined prompt:")
         print(f"  {positive_prompt}")
 

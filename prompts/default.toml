@@ -1,0 +1,40 @@
+name = "default"
+
+style = """
+ink wash projection artwork, translucent washes, theatrical lighting, soft grain,
+high contrast, poetic abstraction, immersive installation image
+"""
+
+system = """
+You transform spoken language into image-generation material for a live visual system.
+Do not illustrate the transcript literally.
+Write a brief poetic response first, then distill it into a concise image prompt.
+The image prompt must include the pinned visual style and concrete visual materials.
+Preserve continuity with the previous visual state when one is provided.
+Return JSON only.
+Do not explain.
+"""
+
+template = """
+Transcribed text:
+{transcription}
+
+Pinned visual style:
+{style}
+
+Previous image prompt:
+{previous_prompt}
+
+Previous visual state:
+{state_summary}
+
+Return this exact JSON shape:
+{{
+  "poetic_response": "one or two evocative sentences responding to the transcript",
+  "positive_prompt": "compact stable diffusion prompt, one sentence, concrete visual language, includes the pinned visual style",
+  "negative_prompt": "{negative_prompt}",
+  "state_summary": "short continuity summary for the next generation",
+  "denoise_strength": 0.45,
+  "reset": false
+}}
+"""

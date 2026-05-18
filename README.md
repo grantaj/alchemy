@@ -137,6 +137,7 @@ It checks:
 
 - ComfyUI is reachable.
 - The configured workflow exists.
+- The configured prompt profile exists and can be loaded.
 - `COMFY_OUTPUT_DIR` exists.
 - The workflow checkpoint is visible to ComfyUI.
 - Ollama is reachable.
@@ -173,11 +174,60 @@ To test Ollama prompt refinement without generating an image:
 uv run alchemy-refine "the room remembers a storm that has not arrived yet"
 ```
 
+This prints a poetic response, the resulting image prompt, and the state summary
+that can be carried into the next generation.
+
 To refine a spoken fragment and submit the resulting prompt to ComfyUI:
 
 ```bash
 uv run alchemy-submit --refine "the room remembers a storm that has not arrived yet"
 ```
+
+To see the full JSON packet:
+
+```bash
+uv run alchemy-refine --json "the room remembers a storm that has not arrived yet"
+```
+
+## Prompt Profiles
+
+Ollama prompt refinement is configured with TOML prompt profiles.
+
+The default profile is:
+
+```text
+prompts/default.toml
+```
+
+Profiles define:
+
+- `system`: the Ollama system instruction.
+- `template`: the user prompt template.
+- `style`: the pinned visual style for the session.
+
+The template receives these fields:
+
+- `{transcription}`
+- `{style}`
+- `{previous_prompt}`
+- `{state_summary}`
+- `{negative_prompt}`
+
+The expected Ollama JSON response is:
+
+```json
+{
+  "poetic_response": "...",
+  "positive_prompt": "...",
+  "negative_prompt": "...",
+  "state_summary": "...",
+  "denoise_strength": 0.45,
+  "reset": false
+}
+```
+
+The controller pins `negative_prompt` from configuration after parsing, so the
+LLM can focus on the poetic response and positive image prompt.
 
 ## Project Structure
 
@@ -187,10 +237,14 @@ src/alchemy/
   comfy_client.py
   ollama_client.py
   prompt_agent.py
+  prompt_profile.py
   services.py
   workflow.py
   image_state.py
   cli/
+
+prompts/
+  default.toml
 
 workflows/
   sdxl_turbo_txt2img.json
@@ -209,7 +263,8 @@ Working:
 - `uv` package scaffold.
 - ComfyUI API workflow submission.
 - Local service detection with `alchemy-doctor`.
-- Ollama prompt refinement.
+- Configurable Ollama prompt profiles.
+- Poetic response plus image prompt refinement.
 - Prompt replacement.
 - Seed randomisation.
 - Generated image discovery through ComfyUI history.

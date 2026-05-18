@@ -4,9 +4,11 @@ import re
 from pydantic import BaseModel, Field
 
 from alchemy.ollama_client import OllamaClient
+from alchemy.prompt_profile import PromptProfile
 
 
 class PromptPacket(BaseModel):
+    poetic_response: str = ""
     positive_prompt: str
     negative_prompt: str = "text, watermark, detail, low quality"
     state_summary: str = ""
@@ -14,44 +16,24 @@ class PromptPacket(BaseModel):
     reset: bool = False
 
 
-SYSTEM_PROMPT = """You convert spoken language fragments into concise image-generation prompts.
-Preserve continuity with the previous visual state.
-Prefer vivid concrete visual language over literal illustration.
-Return JSON only.
-Do not explain."""
-
-
 def refine_prompt(
     client: OllamaClient,
     *,
-    phrase: str,
-    style: str,
+    transcription: str,
+    profile: PromptProfile,
+    style: str | None = None,
     previous_prompt: str = "",
     state_summary: str = "",
     negative_prompt: str = "text, watermark, detail, low quality",
 ) -> PromptPacket:
-    prompt = f"""Spoken phrase:
-{phrase}
-
-Pinned visual style:
-{style}
-
-Previous prompt:
-{previous_prompt or "(none)"}
-
-Previous visual state:
-{state_summary or "(none)"}
-
-Return this exact JSON shape:
-{{
-  "positive_prompt": "compact stable diffusion prompt",
-  "negative_prompt": "{negative_prompt}",
-  "state_summary": "short continuity summary",
-  "denoise_strength": 0.45,
-  "reset": false
-}}"""
-
-    response = client.generate_json(system=SYSTEM_PROMPT, prompt=prompt)
+    prompt = profile.render(
+        transcription=transcription,
+        style=style,
+        previous_prompt=previous_prompt,
+        state_summary=state_summary,
+        negative_prompt=negative_prompt,
+    )
+    response = client.generate_json(system=profile.system, prompt=prompt)
     packet = PromptPacket.model_validate(_loads_json_object(response))
     return packet.model_copy(update={"negative_prompt": negative_prompt})
 

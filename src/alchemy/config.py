@@ -24,6 +24,10 @@ class Settings(BaseSettings):
         default=Path("workflows/sdxl_turbo_txt2img.json"),
         alias="ALCHEMY_WORKFLOW",
     )
+    alchemy_prompt_profile: Path = Field(
+        default=Path("prompts/default.toml"),
+        alias="ALCHEMY_PROMPT_PROFILE",
+    )
     alchemy_current_image: Path = Field(
         default=Path("output/current.png"),
         alias="ALCHEMY_CURRENT_IMAGE",

@@ -6,6 +6,7 @@ import requests
 
 from alchemy.config import Settings
 from alchemy.ollama_client import OllamaClient
+from alchemy.prompt_profile import load_prompt_profile
 from alchemy.workflow import load_workflow
 
 
@@ -21,6 +22,7 @@ def run_checks(settings: Settings) -> list[CheckResult]:
     return [
         check_comfy(settings),
         check_workflow(settings.alchemy_workflow),
+        check_prompt_profile(settings.alchemy_prompt_profile),
         check_comfy_output_dir(settings.comfy_output_dir),
         check_workflow_checkpoint(settings),
         check_ollama(settings),
@@ -62,6 +64,28 @@ def check_workflow(path: Path) -> CheckResult:
         )
 
     return CheckResult("Workflow file", True, f"Loaded {path}")
+
+
+def check_prompt_profile(path: Path) -> CheckResult:
+    if not path.exists():
+        return CheckResult(
+            "Prompt profile",
+            False,
+            f"{path} does not exist",
+            "Create a prompt profile TOML file or set ALCHEMY_PROMPT_PROFILE in .env.",
+        )
+
+    try:
+        profile = load_prompt_profile(path)
+    except (OSError, KeyError, ValueError) as error:
+        return CheckResult(
+            "Prompt profile",
+            False,
+            f"{path} could not be loaded: {error}",
+            "Check that the profile contains name, system, template, and style fields.",
+        )
+
+    return CheckResult("Prompt profile", True, f"Loaded {profile.name} from {path}")
 
 
 def check_comfy_output_dir(path: Path | None) -> CheckResult:

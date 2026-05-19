@@ -316,6 +316,32 @@ To evolve each chunk from the previous generated image:
 uv run alchemy-from-audio --chunked --feedback example-poem-a-summar-day.m4a
 ```
 
+To schedule chunks according to their transcript timestamps:
+
+```bash
+uv run alchemy-from-audio --chunked --feedback --realtime example-poem-a-summar-day.m4a
+```
+
+Realtime mode supports delay scaling and backpressure:
+
+```bash
+uv run alchemy-from-audio --chunked --feedback --realtime example-poem-a-summar-day.m4a --delay-scale 0.5 --backpressure latest
+```
+
+For rehearsal diagnostics, add `--monitor`:
+
+```bash
+uv run alchemy-from-audio --chunked --feedback --realtime --monitor example-poem-a-summar-day.m4a
+```
+
+Monitor mode prints chunk timing, lag, transcript text, poetic response, image
+prompt, generation mode, ComfyUI prompt id, output filename, and per-stage timing.
+
+Backpressure modes:
+
+- `serial`: process every chunk in order, even if generation falls behind.
+- `latest`: when generation falls behind, skip stale chunks and process the newest chunk whose timestamp has passed.
+
 ## Prompt Profiles
 
 Ollama prompt refinement is configured with TOML prompt profiles.
@@ -370,6 +396,8 @@ ALCHEMY_CHUNK_MIN_WORDS=5
 ALCHEMY_CHUNK_MIN_SILENCE_GAP=0.7
 ALCHEMY_CHUNK_PREFER_SENTENCE_BOUNDARY=true
 ALCHEMY_CHUNK_SENTENCE_PUNCTUATION=.?!;:
+ALCHEMY_BACKPRESSURE_MODE=latest
+ALCHEMY_DELAY_SCALE=1.0
 ```
 
 The chunker tries to keep chunks natural by using whisper.cpp word timestamps,

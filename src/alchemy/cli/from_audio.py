@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import time
 
 from alchemy.audio_chunks import ChunkingConfig, TranscriptChunk, chunk_segments
 from alchemy.config import load_settings
@@ -26,6 +27,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-seconds", type=float, help="Chunk max duration override.")
     parser.add_argument("--max-words", type=int, help="Chunk max word count override.")
     parser.add_argument("--min-silence-gap", type=float, help="Chunk silence gap override.")
+    parser.add_argument(
+        "--realtime",
+        action="store_true",
+        help="Schedule chunk processing according to transcript timestamps.",
+    )
+    parser.add_argument("--delay-scale", type=float, help="Scale realtime delays, e.g. 0.5 is 2x.")
+    parser.add_argument(
+        "--backpressure",
+        choices=("serial", "latest"),
+        help="Realtime policy when generation falls behind.",
+    )
+    parser.add_argument("--monitor", action="store_true", help="Print detailed rehearsal diagnostics.")
     parser.add_argument("--negative", help="Negative prompt override.")
     parser.add_argument("--profile", type=Path, help="Prompt profile TOML path.")
     parser.add_argument("--style", help="Pinned visual style override.")
@@ -58,59 +71,28 @@ def main() -> None:
         chunks = chunk_segments(transcript.segments, _chunking_config(settings, args))
         print(f"Chunks: {len(chunks)}")
 
-    previous_prompt = args.previous_prompt
-    state_summary = args.state_summary
-    previous_image: Path | None = None
-    for index, chunk in enumerate(chunks, start=1):
-        if args.chunked:
-            print(f"Chunk {index}/{len(chunks)}:")
-            print(f"  {chunk.text}")
-
-        packet = refine_prompt(
-            ollama,
-            transcription=chunk.text,
-            profile=profile,
-            style=args.style or settings.alchemy_style,
-            previous_prompt=previous_prompt,
-            state_summary=state_summary,
-            negative_prompt=negative_prompt,
-        )
-
-        print("Poetic response:")
-        print(f"  {packet.poetic_response}")
-        print("Refined prompt:")
-        print(f"  {packet.positive_prompt}")
-
-        prefix = args.prefix if not args.chunked else f"{args.prefix}_chunk_{index:03d}"
-        use_feedback = args.feedback and previous_image is not None
-        if use_feedback:
-            if args.denoise is None:
-                print("Generation mode: img2img feedback, denoise=workflow default")
-            else:
-                print(f"Generation mode: img2img feedback, denoise={args.denoise}")
-            result = submit_img2img(
+    runtime = _RuntimeState(
+        previous_prompt=args.previous_prompt,
+        state_summary=args.state_summary,
+        previous_image=None,
+    )
+    if args.realtime:
+        _process_realtime(chunks, runtime, settings, args, ollama, profile, negative_prompt)
+    else:
+        for index, chunk in enumerate(chunks, start=1):
+            _process_chunk(
+                index,
+                len(chunks),
+                chunk,
+                runtime,
                 settings,
-                positive_prompt=packet.positive_prompt,
-                negative_prompt=packet.negative_prompt,
-                source_image=previous_image,
-                seed=args.seed,
-                denoise_strength=args.denoise,
-                filename_prefix=prefix,
+                args,
+                ollama,
+                profile,
+                negative_prompt,
+                scheduled_start=None,
+                delay_scale=1.0,
             )
-        else:
-            print("Generation mode: txt2img")
-            result = submit_txt2img(
-                settings,
-                positive_prompt=packet.positive_prompt,
-                negative_prompt=packet.negative_prompt,
-                workflow_path=args.workflow,
-                seed=args.seed,
-                filename_prefix=prefix,
-            )
-
-        previous_prompt = packet.positive_prompt
-        state_summary = packet.state_summary
-        previous_image = result.current_image
 
 
 def _single_chunk(text: str) -> TranscriptChunk:
@@ -130,6 +112,227 @@ def _chunking_config(settings, args: argparse.Namespace) -> ChunkingConfig:
         prefer_sentence_boundary=settings.alchemy_chunk_prefer_sentence_boundary,
         sentence_punctuation=settings.alchemy_chunk_sentence_punctuation,
     )
+
+
+class _RuntimeState:
+    def __init__(
+        self,
+        *,
+        previous_prompt: str,
+        state_summary: str,
+        previous_image: Path | None,
+    ) -> None:
+        self.previous_prompt = previous_prompt
+        self.state_summary = state_summary
+        self.previous_image = previous_image
+
+
+def _process_realtime(
+    chunks: list[TranscriptChunk],
+    runtime: _RuntimeState,
+    settings,
+    args: argparse.Namespace,
+    ollama: OllamaClient,
+    profile,
+    negative_prompt: str,
+) -> None:
+    delay_scale = args.delay_scale if args.delay_scale is not None else settings.alchemy_delay_scale
+    backpressure = args.backpressure or settings.alchemy_backpressure_mode
+    if backpressure not in {"serial", "latest"}:
+        raise SystemExit(f"Unsupported backpressure mode: {backpressure}")
+
+    start_time = time.monotonic()
+    index = 0
+    while index < len(chunks):
+        chunk = chunks[index]
+        _wait_for_chunk(chunk, start_time, delay_scale)
+        _process_chunk(
+            index + 1,
+            len(chunks),
+            chunk,
+            runtime,
+            settings,
+            args,
+            ollama,
+            profile,
+            negative_prompt,
+            scheduled_start=start_time,
+            delay_scale=delay_scale,
+        )
+        index += 1
+
+        if backpressure == "latest":
+            latest_ready = _latest_ready_chunk_index(chunks, start_time, delay_scale, index)
+            if latest_ready is not None and latest_ready > index:
+                skipped = latest_ready - index
+                if args.monitor:
+                    skipped_range = f"{index + 1}-{latest_ready}" if skipped > 1 else f"{index + 1}"
+                    print("[backpressure]")
+                    print(f"  skipped chunks: {skipped_range}")
+                    print(f"  jumping to chunk: {latest_ready + 1}")
+                else:
+                    print(
+                        f"Backpressure: skipped {skipped} stale chunk(s); "
+                        f"jumping to chunk {latest_ready + 1}."
+                    )
+                index = latest_ready
+
+
+def _wait_for_chunk(chunk: TranscriptChunk, start_time: float, delay_scale: float) -> None:
+    if chunk.start is None:
+        return
+
+    target = start_time + (chunk.start * delay_scale)
+    remaining = target - time.monotonic()
+    if remaining > 0:
+        time.sleep(remaining)
+
+
+def _latest_ready_chunk_index(
+    chunks: list[TranscriptChunk],
+    start_time: float,
+    delay_scale: float,
+    start_index: int,
+) -> int | None:
+    elapsed = (time.monotonic() - start_time) / delay_scale
+    latest = None
+    for index in range(start_index, len(chunks)):
+        chunk_start = chunks[index].start
+        if chunk_start is None or chunk_start <= elapsed:
+            latest = index
+        else:
+            break
+    return latest
+
+
+def _process_chunk(
+    index: int,
+    total: int,
+    chunk: TranscriptChunk,
+    runtime: _RuntimeState,
+    settings,
+    args: argparse.Namespace,
+    ollama: OllamaClient,
+    profile,
+    negative_prompt: str,
+    scheduled_start: float | None,
+    delay_scale: float,
+) -> None:
+    started_at = time.monotonic()
+    lag = _chunk_lag(chunk, scheduled_start, delay_scale)
+
+    if args.chunked:
+        timing = _format_chunk_timing(chunk)
+        if args.monitor:
+            print()
+            print(f"[chunk {index}/{total}{timing} | {chunk.word_count} words]")
+            if lag is not None:
+                print(f"lag: {lag:+.2f}s")
+            print("transcript:")
+            print(f"  {chunk.text}")
+        else:
+            print(f"Chunk {index}/{total}{timing}:")
+            print(f"  {chunk.text}")
+
+    refine_started = time.monotonic()
+    packet = refine_prompt(
+        ollama,
+        transcription=chunk.text,
+        profile=profile,
+        style=args.style or settings.alchemy_style,
+        previous_prompt=runtime.previous_prompt,
+        state_summary=runtime.state_summary,
+        negative_prompt=negative_prompt,
+    )
+    refine_duration = time.monotonic() - refine_started
+
+    if args.monitor:
+        print("poetic:")
+        print(f"  {packet.poetic_response}")
+        print("prompt:")
+        print(f"  {packet.positive_prompt}")
+    else:
+        print("Poetic response:")
+        print(f"  {packet.poetic_response}")
+        print("Refined prompt:")
+        print(f"  {packet.positive_prompt}")
+
+    prefix = args.prefix if not args.chunked else f"{args.prefix}_chunk_{index:03d}"
+    use_feedback = args.feedback and runtime.previous_image is not None
+    generation_started = time.monotonic()
+    if use_feedback:
+        if args.denoise is None:
+            mode = "img2img feedback"
+            denoise_label = "workflow default"
+        else:
+            mode = "img2img feedback"
+            denoise_label = str(args.denoise)
+        if not args.monitor:
+            print(f"Generation mode: {mode}, denoise={denoise_label}")
+        result = submit_img2img(
+            settings,
+            positive_prompt=packet.positive_prompt,
+            negative_prompt=packet.negative_prompt,
+            source_image=runtime.previous_image,
+            seed=args.seed,
+            denoise_strength=args.denoise,
+            filename_prefix=prefix,
+            quiet=args.monitor,
+        )
+    else:
+        mode = "txt2img"
+        denoise_label = None
+        if not args.monitor:
+            print(f"Generation mode: {mode}")
+        result = submit_txt2img(
+            settings,
+            positive_prompt=packet.positive_prompt,
+            negative_prompt=packet.negative_prompt,
+            workflow_path=args.workflow,
+            seed=args.seed,
+            filename_prefix=prefix,
+            quiet=args.monitor,
+        )
+    generation_duration = time.monotonic() - generation_started
+
+    runtime.previous_prompt = packet.positive_prompt
+    runtime.state_summary = packet.state_summary
+    runtime.previous_image = result.current_image
+
+    if args.monitor:
+        current_image = str(result.current_image) if result.current_image is not None else "(not copied)"
+        print("generation:")
+        if denoise_label is None:
+            print(f"  mode={mode}")
+        else:
+            print(f"  mode={mode} denoise={denoise_label}")
+        print(f"  prompt_id={result.prompt_id}")
+        print(f"  comfy_output={result.comfy_filename}")
+        print(f"  current_image={current_image}")
+        print("timing:")
+        print(f"  refine={refine_duration:.2f}s generation={generation_duration:.2f}s total={time.monotonic() - started_at:.2f}s")
+
+
+def _format_chunk_timing(chunk: TranscriptChunk) -> str:
+    if chunk.start is None:
+        return ""
+
+    if chunk.end is None:
+        return f" [{chunk.start:05.2f}s]"
+
+    return f" [{chunk.start:05.2f}s -> {chunk.end:05.2f}s]"
+
+
+def _chunk_lag(
+    chunk: TranscriptChunk,
+    scheduled_start: float | None,
+    delay_scale: float,
+) -> float | None:
+    if scheduled_start is None or chunk.start is None:
+        return None
+
+    scheduled_time = scheduled_start + (chunk.start * delay_scale)
+    return time.monotonic() - scheduled_time
 
 
 if __name__ == "__main__":

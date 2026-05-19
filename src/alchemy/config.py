@@ -68,6 +68,8 @@ class Settings(BaseSettings):
         default=".?!;:",
         alias="ALCHEMY_CHUNK_SENTENCE_PUNCTUATION",
     )
+    alchemy_backpressure_mode: str = Field(default="latest", alias="ALCHEMY_BACKPRESSURE_MODE")
+    alchemy_delay_scale: float = Field(default=1.0, alias="ALCHEMY_DELAY_SCALE")
 
     @property
     def comfy_base_url(self) -> str:

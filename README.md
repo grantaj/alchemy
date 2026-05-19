@@ -278,20 +278,20 @@ uv run alchemy-refine --json "the room remembers a storm that has not arrived ye
 To transcribe an audio file with whisper.cpp:
 
 ```bash
-uv run alchemy-transcribe example-poem-a-summar-day.m4a
+uv run alchemy-transcribe examples/example-poem.m4a
 ```
 
 To inspect timestamped segments or configured chunks:
 
 ```bash
-uv run alchemy-transcribe --segments example-poem-a-summar-day.m4a
-uv run alchemy-transcribe --chunks example-poem-a-summar-day.m4a
+uv run alchemy-transcribe --segments examples/example-poem.m4a
+uv run alchemy-transcribe --chunks examples/example-poem.m4a
 ```
 
 To run the current full file-based path:
 
 ```bash
-uv run alchemy-from-audio example-poem-a-summar-day.m4a
+uv run alchemy-from-audio examples/example-poem.m4a
 ```
 
 That performs:
@@ -307,31 +307,31 @@ audio file
 To generate a sequence of images from transcript chunks:
 
 ```bash
-uv run alchemy-from-audio --chunked example-poem-a-summar-day.m4a
+uv run alchemy-from-audio --chunked examples/example-poem.m4a
 ```
 
 To evolve each chunk from the previous generated image:
 
 ```bash
-uv run alchemy-from-audio --chunked --feedback example-poem-a-summar-day.m4a
+uv run alchemy-from-audio --chunked --feedback examples/example-poem.m4a
 ```
 
 To schedule chunks according to their transcript timestamps:
 
 ```bash
-uv run alchemy-from-audio --chunked --feedback --realtime example-poem-a-summar-day.m4a
+uv run alchemy-from-audio --chunked --feedback --realtime examples/example-poem.m4a
 ```
 
 Realtime mode supports delay scaling and backpressure:
 
 ```bash
-uv run alchemy-from-audio --chunked --feedback --realtime example-poem-a-summar-day.m4a --delay-scale 0.5 --backpressure latest
+uv run alchemy-from-audio --chunked --feedback --realtime examples/example-poem.m4a --delay-scale 0.5 --backpressure latest
 ```
 
 For rehearsal diagnostics, add `--monitor`:
 
 ```bash
-uv run alchemy-from-audio --chunked --feedback --realtime --monitor example-poem-a-summar-day.m4a
+uv run alchemy-from-audio --chunked --feedback --realtime --monitor examples/example-poem.m4a
 ```
 
 Monitor mode prints chunk timing, lag, transcript text, poetic response, image
@@ -377,7 +377,7 @@ http://127.0.0.1:8765
 In a second terminal:
 
 ```bash
-uv run alchemy-demo example-poem-a-summar-day.m4a
+uv run alchemy-demo examples/example-poem.m4a
 ```
 
 `alchemy-demo` runs service checks, prints the viewer URL, then launches the
@@ -396,10 +396,12 @@ audio file
 Useful demo overrides:
 
 ```bash
-uv run alchemy-demo example-poem-a-summar-day.m4a --delay-scale 0.5
-uv run alchemy-demo example-poem-a-summar-day.m4a --max-words 40 --max-seconds 14
-uv run alchemy-demo example-poem-a-summar-day.m4a --no-realtime
+uv run alchemy-demo examples/example-poem.m4a --delay-scale 0.5
+uv run alchemy-demo examples/example-poem.m4a --max-words 40 --max-seconds 14
+uv run alchemy-demo examples/example-poem.m4a --no-realtime
 ```
+
+See [docs/demo-runbook.md](docs/demo-runbook.md) for the full demo checklist.
 
 ## Prompt Profiles
 
@@ -465,8 +467,8 @@ silence gaps, duration limits, word-count limits, and punctuation boundaries.
 Useful test overrides:
 
 ```bash
-uv run alchemy-transcribe --chunks example-poem-a-summar-day.m4a --max-words 20 --max-seconds 6
-uv run alchemy-from-audio --chunked example-poem-a-summar-day.m4a --max-words 20 --max-seconds 6
+uv run alchemy-transcribe --chunks examples/example-poem.m4a --max-words 20 --max-seconds 6
+uv run alchemy-from-audio --chunked examples/example-poem.m4a --max-words 20 --max-seconds 6
 ```
 
 ## Project Structure

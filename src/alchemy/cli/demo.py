@@ -15,6 +15,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-monitor", action="store_true", help="Disable rehearsal monitor output.")
     parser.add_argument("--no-feedback", action="store_true", help="Disable img2img feedback.")
     parser.add_argument("--no-realtime", action="store_true", help="Run chunks as fast as possible.")
+    parser.add_argument("--no-audio", action="store_true", help="Do not play the source audio.")
+    parser.add_argument("--audio-player", help="Audio player command.")
     parser.add_argument("--backpressure", choices=("serial", "latest"), default=settings.alchemy_backpressure_mode)
     parser.add_argument("--delay-scale", type=float, default=settings.alchemy_delay_scale)
     parser.add_argument("--max-words", type=int, help="Chunk max word count override.")
@@ -63,8 +65,12 @@ def main() -> None:
         from_audio_args.append("--feedback")
     if not args.no_realtime:
         from_audio_args.append("--realtime")
+    if not args.no_audio and not args.no_realtime:
+        from_audio_args.append("--play-audio")
     if not args.no_monitor:
         from_audio_args.append("--monitor")
+    if args.audio_player is not None:
+        from_audio_args.extend(["--audio-player", args.audio_player])
     if args.max_words is not None:
         from_audio_args.extend(["--max-words", str(args.max_words)])
     if args.max_seconds is not None:

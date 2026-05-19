@@ -51,6 +51,7 @@ audio file
   -> whisper.cpp transcription
   -> transcript chunking
   -> realtime scheduling
+  -> source audio playback
   -> Ollama prompt refinement
   -> ComfyUI txt2img for the first chunk
   -> ComfyUI img2img feedback for later chunks
@@ -76,6 +77,12 @@ Run without realtime scheduling:
 
 ```bash
 uv run alchemy-demo examples/example-poem.m4a --no-realtime
+```
+
+Run without audio playback:
+
+```bash
+uv run alchemy-demo examples/example-poem.m4a --no-audio
 ```
 
 Run without img2img feedback:

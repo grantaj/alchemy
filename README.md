@@ -387,6 +387,7 @@ standard file-based performance path:
 audio file
   -> chunked transcription
   -> realtime scheduling
+  -> source audio playback
   -> latest backpressure
   -> monitor logging
   -> txt2img for first chunk
@@ -399,6 +400,7 @@ Useful demo overrides:
 uv run alchemy-demo examples/example-poem.m4a --delay-scale 0.5
 uv run alchemy-demo examples/example-poem.m4a --max-words 40 --max-seconds 14
 uv run alchemy-demo examples/example-poem.m4a --no-realtime
+uv run alchemy-demo examples/example-poem.m4a --no-audio
 ```
 
 See [docs/demo-runbook.md](docs/demo-runbook.md) for the full demo checklist.
@@ -459,6 +461,7 @@ ALCHEMY_CHUNK_PREFER_SENTENCE_BOUNDARY=true
 ALCHEMY_CHUNK_SENTENCE_PUNCTUATION=.?!;:
 ALCHEMY_BACKPRESSURE_MODE=latest
 ALCHEMY_DELAY_SCALE=1.0
+ALCHEMY_AUDIO_PLAYER=afplay
 ```
 
 The chunker tries to keep chunks natural by using whisper.cpp word timestamps,

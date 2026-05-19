@@ -1,5 +1,7 @@
 import argparse
 from pathlib import Path
+import shlex
+import subprocess
 import time
 
 from alchemy.audio_chunks import ChunkingConfig, TranscriptChunk, chunk_segments
@@ -33,6 +35,8 @@ def parse_args() -> argparse.Namespace:
         help="Schedule chunk processing according to transcript timestamps.",
     )
     parser.add_argument("--delay-scale", type=float, help="Scale realtime delays, e.g. 0.5 is 2x.")
+    parser.add_argument("--play-audio", action="store_true", help="Play the source audio during realtime mode.")
+    parser.add_argument("--audio-player", help="Audio player command. Defaults to ALCHEMY_AUDIO_PLAYER.")
     parser.add_argument(
         "--backpressure",
         choices=("serial", "latest"),
@@ -141,41 +145,77 @@ def _process_realtime(
     if backpressure not in {"serial", "latest"}:
         raise SystemExit(f"Unsupported backpressure mode: {backpressure}")
 
+    audio_process = _start_audio(args, settings) if args.play_audio else None
     start_time = time.monotonic()
-    index = 0
-    while index < len(chunks):
-        chunk = chunks[index]
-        _wait_for_chunk(chunk, start_time, delay_scale)
-        _process_chunk(
-            index + 1,
-            len(chunks),
-            chunk,
-            runtime,
-            settings,
-            args,
-            ollama,
-            profile,
-            negative_prompt,
-            scheduled_start=start_time,
-            delay_scale=delay_scale,
-        )
-        index += 1
+    try:
+        index = 0
+        while index < len(chunks):
+            chunk = chunks[index]
+            _wait_for_chunk(chunk, start_time, delay_scale)
+            _process_chunk(
+                index + 1,
+                len(chunks),
+                chunk,
+                runtime,
+                settings,
+                args,
+                ollama,
+                profile,
+                negative_prompt,
+                scheduled_start=start_time,
+                delay_scale=delay_scale,
+            )
+            index += 1
 
-        if backpressure == "latest":
-            latest_ready = _latest_ready_chunk_index(chunks, start_time, delay_scale, index)
-            if latest_ready is not None and latest_ready > index:
-                skipped = latest_ready - index
-                if args.monitor:
-                    skipped_range = f"{index + 1}-{latest_ready}" if skipped > 1 else f"{index + 1}"
-                    print("[backpressure]")
-                    print(f"  skipped chunks: {skipped_range}")
-                    print(f"  jumping to chunk: {latest_ready + 1}")
-                else:
-                    print(
-                        f"Backpressure: skipped {skipped} stale chunk(s); "
-                        f"jumping to chunk {latest_ready + 1}."
-                    )
-                index = latest_ready
+            if backpressure == "latest":
+                latest_ready = _latest_ready_chunk_index(chunks, start_time, delay_scale, index)
+                if latest_ready is not None and latest_ready > index:
+                    skipped = latest_ready - index
+                    if args.monitor:
+                        skipped_range = f"{index + 1}-{latest_ready}" if skipped > 1 else f"{index + 1}"
+                        print("[backpressure]")
+                        print(f"  skipped chunks: {skipped_range}")
+                        print(f"  jumping to chunk: {latest_ready + 1}")
+                    else:
+                        print(
+                            f"Backpressure: skipped {skipped} stale chunk(s); "
+                            f"jumping to chunk {latest_ready + 1}."
+                        )
+                    index = latest_ready
+    finally:
+        if audio_process is not None:
+            _finish_audio(audio_process)
+
+
+def _start_audio(args: argparse.Namespace, settings) -> subprocess.Popen:
+    command = shlex.split(args.audio_player or settings.alchemy_audio_player)
+    if not command:
+        raise RuntimeError("Audio player command is empty.")
+
+    command.append(str(args.audio_path))
+    if args.monitor:
+        print("audio:")
+        print(f"  player={' '.join(command)}")
+
+    try:
+        return subprocess.Popen(command)
+    except FileNotFoundError as error:
+        raise RuntimeError(
+            f"Audio player not found: {command[0]}. "
+            "Set ALCHEMY_AUDIO_PLAYER or pass --audio-player."
+        ) from error
+
+
+def _finish_audio(audio_process: subprocess.Popen) -> None:
+    if audio_process.poll() is not None:
+        return
+
+    try:
+        audio_process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        # The visuals may finish before playback when chunks are skipped. Leave the
+        # source audio playing rather than cutting off the room abruptly.
+        pass
 
 
 def _wait_for_chunk(chunk: TranscriptChunk, start_time: float, delay_scale: float) -> None:

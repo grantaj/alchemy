@@ -342,6 +342,65 @@ Backpressure modes:
 - `serial`: process every chunk in order, even if generation falls behind.
 - `latest`: when generation falls behind, skip stale chunks and process the newest chunk whose timestamp has passed.
 
+## Viewer
+
+Start the local browser viewer:
+
+```bash
+uv run alchemy-viewer
+```
+
+Open:
+
+```text
+http://127.0.0.1:8765
+```
+
+The page watches `output/current.png` and refreshes automatically whenever the
+file changes. It is intended as a simple fullscreen/projector fallback before
+TouchDesigner integration.
+
+## Demo Mode
+
+Recommended two-terminal demo flow:
+
+```bash
+uv run alchemy-viewer
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765
+```
+
+In a second terminal:
+
+```bash
+uv run alchemy-demo example-poem-a-summar-day.m4a
+```
+
+`alchemy-demo` runs service checks, prints the viewer URL, then launches the
+standard file-based performance path:
+
+```text
+audio file
+  -> chunked transcription
+  -> realtime scheduling
+  -> latest backpressure
+  -> monitor logging
+  -> txt2img for first chunk
+  -> img2img feedback for later chunks
+```
+
+Useful demo overrides:
+
+```bash
+uv run alchemy-demo example-poem-a-summar-day.m4a --delay-scale 0.5
+uv run alchemy-demo example-poem-a-summar-day.m4a --max-words 40 --max-seconds 14
+uv run alchemy-demo example-poem-a-summar-day.m4a --no-realtime
+```
+
 ## Prompt Profiles
 
 Ollama prompt refinement is configured with TOML prompt profiles.

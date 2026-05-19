@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     )
     alchemy_backpressure_mode: str = Field(default="latest", alias="ALCHEMY_BACKPRESSURE_MODE")
     alchemy_delay_scale: float = Field(default=1.0, alias="ALCHEMY_DELAY_SCALE")
+    alchemy_viewer_host: str = Field(default="127.0.0.1", alias="ALCHEMY_VIEWER_HOST")
+    alchemy_viewer_port: int = Field(default=8765, alias="ALCHEMY_VIEWER_PORT")
 
     @property
     def comfy_base_url(self) -> str:

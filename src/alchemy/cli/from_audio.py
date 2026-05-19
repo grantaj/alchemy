@@ -3,7 +3,7 @@ from pathlib import Path
 
 from alchemy.audio_chunks import ChunkingConfig, TranscriptChunk, chunk_segments
 from alchemy.config import load_settings
-from alchemy.generation import submit_txt2img
+from alchemy.generation import submit_img2img, submit_txt2img
 from alchemy.ollama_client import OllamaClient
 from alchemy.prompt_agent import refine_prompt
 from alchemy.prompt_profile import load_prompt_profile
@@ -17,6 +17,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("audio_path", type=Path, help="Audio file to process.")
     parser.add_argument("--language", default="en", help="Transcription language.")
     parser.add_argument("--chunked", action="store_true", help="Generate one image per transcript chunk.")
+    parser.add_argument(
+        "--feedback",
+        action="store_true",
+        help="Use img2img feedback after the first generated image.",
+    )
+    parser.add_argument("--denoise", type=float, help="Override img2img denoise strength.")
     parser.add_argument("--max-seconds", type=float, help="Chunk max duration override.")
     parser.add_argument("--max-words", type=int, help="Chunk max word count override.")
     parser.add_argument("--min-silence-gap", type=float, help="Chunk silence gap override.")
@@ -54,6 +60,7 @@ def main() -> None:
 
     previous_prompt = args.previous_prompt
     state_summary = args.state_summary
+    previous_image: Path | None = None
     for index, chunk in enumerate(chunks, start=1):
         if args.chunked:
             print(f"Chunk {index}/{len(chunks)}:")
@@ -75,17 +82,35 @@ def main() -> None:
         print(f"  {packet.positive_prompt}")
 
         prefix = args.prefix if not args.chunked else f"{args.prefix}_chunk_{index:03d}"
-        submit_txt2img(
-            settings,
-            positive_prompt=packet.positive_prompt,
-            negative_prompt=packet.negative_prompt,
-            workflow_path=args.workflow,
-            seed=args.seed,
-            filename_prefix=prefix,
-        )
+        use_feedback = args.feedback and previous_image is not None
+        if use_feedback:
+            if args.denoise is None:
+                print("Generation mode: img2img feedback, denoise=workflow default")
+            else:
+                print(f"Generation mode: img2img feedback, denoise={args.denoise}")
+            result = submit_img2img(
+                settings,
+                positive_prompt=packet.positive_prompt,
+                negative_prompt=packet.negative_prompt,
+                source_image=previous_image,
+                seed=args.seed,
+                denoise_strength=args.denoise,
+                filename_prefix=prefix,
+            )
+        else:
+            print("Generation mode: txt2img")
+            result = submit_txt2img(
+                settings,
+                positive_prompt=packet.positive_prompt,
+                negative_prompt=packet.negative_prompt,
+                workflow_path=args.workflow,
+                seed=args.seed,
+                filename_prefix=prefix,
+            )
 
         previous_prompt = packet.positive_prompt
         state_summary = packet.state_summary
+        previous_image = result.current_image
 
 
 def _single_chunk(text: str) -> TranscriptChunk:

@@ -164,6 +164,7 @@ Example:
 
 ```bash
 COMFY_OUTPUT_DIR=/Users/alex/ComfyUI/output
+COMFY_INPUT_DIR=/Users/alex/ComfyUI/input
 ```
 
 This lets the controller copy ComfyUI's latest generated file to:
@@ -171,6 +172,9 @@ This lets the controller copy ComfyUI's latest generated file to:
 ```text
 output/current.png
 ```
+
+`COMFY_INPUT_DIR` is used for img2img feedback. The controller copies the
+previous generated image there so ComfyUI's `Load Image` node can read it.
 
 Your `.env` file is local-only and should not be committed.
 
@@ -187,8 +191,10 @@ It checks:
 
 - ComfyUI is reachable.
 - The configured workflow exists.
+- The configured feedback workflow exists.
 - The configured prompt profile exists and can be loaded.
 - `COMFY_OUTPUT_DIR` exists.
+- `COMFY_INPUT_DIR` exists.
 - The workflow checkpoint is visible to ComfyUI.
 - Ollama is reachable.
 - The configured Ollama model is installed.
@@ -302,6 +308,12 @@ To generate a sequence of images from transcript chunks:
 
 ```bash
 uv run alchemy-from-audio --chunked example-poem-a-summar-day.m4a
+```
+
+To evolve each chunk from the previous generated image:
+
+```bash
+uv run alchemy-from-audio --chunked --feedback example-poem-a-summar-day.m4a
 ```
 
 ## Prompt Profiles

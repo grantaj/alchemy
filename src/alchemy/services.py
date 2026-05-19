@@ -22,8 +22,10 @@ def run_checks(settings: Settings) -> list[CheckResult]:
     return [
         check_comfy(settings),
         check_workflow(settings.alchemy_workflow),
+        check_workflow(settings.alchemy_feedback_workflow, name="Feedback workflow file"),
         check_prompt_profile(settings.alchemy_prompt_profile),
         check_comfy_output_dir(settings.comfy_output_dir),
+        check_comfy_input_dir(settings.comfy_input_dir),
         check_workflow_checkpoint(settings),
         check_ollama(settings),
         check_whisper_cpp(settings),
@@ -45,10 +47,10 @@ def check_comfy(settings: Settings) -> CheckResult:
     return CheckResult("ComfyUI service", True, f"Reachable at {settings.comfy_base_url}")
 
 
-def check_workflow(path: Path) -> CheckResult:
+def check_workflow(path: Path, *, name: str = "Workflow file") -> CheckResult:
     if not path.exists():
         return CheckResult(
-            "Workflow file",
+            name,
             False,
             f"{path} does not exist",
             "Export a ComfyUI API workflow and set ALCHEMY_WORKFLOW in .env.",
@@ -58,13 +60,13 @@ def check_workflow(path: Path) -> CheckResult:
         load_workflow(path)
     except (OSError, ValueError) as error:
         return CheckResult(
-            "Workflow file",
+            name,
             False,
             f"{path} could not be loaded: {error}",
             "Re-export the workflow from ComfyUI using API format.",
         )
 
-    return CheckResult("Workflow file", True, f"Loaded {path}")
+    return CheckResult(name, True, f"Loaded {path}")
 
 
 def check_prompt_profile(path: Path) -> CheckResult:
@@ -107,6 +109,26 @@ def check_comfy_output_dir(path: Path | None) -> CheckResult:
         )
 
     return CheckResult("ComfyUI output directory", True, str(path))
+
+
+def check_comfy_input_dir(path: Path | None) -> CheckResult:
+    if path is None:
+        return CheckResult(
+            "ComfyUI input directory",
+            False,
+            "COMFY_INPUT_DIR is not set",
+            "Set COMFY_INPUT_DIR in .env to your ComfyUI input directory for img2img feedback.",
+        )
+
+    if not path.exists():
+        return CheckResult(
+            "ComfyUI input directory",
+            False,
+            f"{path} does not exist",
+            "Set COMFY_INPUT_DIR to the directory where ComfyUI Load Image reads input images.",
+        )
+
+    return CheckResult("ComfyUI input directory", True, str(path))
 
 
 def check_workflow_checkpoint(settings: Settings) -> CheckResult:

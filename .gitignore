@@ -13,6 +13,9 @@ __pycache__/
 output/current.png
 output/archive/
 
+# macOS metadata
+.DS_Store
+
 # PySpout 
 PySpout.pyd
 Spout.dll

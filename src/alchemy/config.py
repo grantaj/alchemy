@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     comfy_host: str = Field(default="127.0.0.1", alias="COMFY_HOST")
     comfy_port: int = Field(default=8188, alias="COMFY_PORT")
     comfy_output_dir: Path | None = Field(default=None, alias="COMFY_OUTPUT_DIR")
+    comfy_input_dir: Path | None = Field(default=None, alias="COMFY_INPUT_DIR")
     ollama_host: str = Field(default="http://127.0.0.1:11434", alias="OLLAMA_HOST")
     ollama_model: str = Field(default="llama3.2:3b", alias="OLLAMA_MODEL")
     whisper_cpp_host: str = Field(default="http://127.0.0.1:8080", alias="WHISPER_CPP_HOST")
@@ -28,6 +29,10 @@ class Settings(BaseSettings):
     alchemy_workflow: Path = Field(
         default=Path("workflows/sdxl_turbo_txt2img.json"),
         alias="ALCHEMY_WORKFLOW",
+    )
+    alchemy_feedback_workflow: Path = Field(
+        default=Path("workflows/sdxl_turbo_img2img.json"),
+        alias="ALCHEMY_FEEDBACK_WORKFLOW",
     )
     alchemy_prompt_profile: Path = Field(
         default=Path("prompts/default.toml"),

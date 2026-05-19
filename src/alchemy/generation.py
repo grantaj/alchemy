@@ -1,10 +1,16 @@
 from dataclasses import dataclass
 from pathlib import Path
+from shutil import copy2
 
 from alchemy.comfy_client import ComfyClient
 from alchemy.config import Settings
 from alchemy.image_state import copy_current_image
-from alchemy.workflow import Workflow, load_workflow, prepare_txt2img_workflow
+from alchemy.workflow import (
+    Workflow,
+    load_workflow,
+    prepare_img2img_workflow,
+    prepare_txt2img_workflow,
+)
 
 
 @dataclass(frozen=True)
@@ -32,6 +38,44 @@ def submit_txt2img(
         filename_prefix=filename_prefix,
     )
     return submit_prepared_workflow(settings, prepared)
+
+
+def submit_img2img(
+    settings: Settings,
+    *,
+    positive_prompt: str,
+    negative_prompt: str,
+    source_image: Path,
+    workflow_path: Path | None = None,
+    seed: int | None = None,
+    denoise_strength: float | None = None,
+    filename_prefix: str = "alchemy",
+) -> GenerationResult:
+    input_image_name = stage_comfy_input_image(settings, source_image)
+    workflow = load_workflow(workflow_path or settings.alchemy_feedback_workflow)
+    prepared = prepare_img2img_workflow(
+        workflow,
+        positive_prompt=positive_prompt,
+        negative_prompt=negative_prompt,
+        input_image=input_image_name,
+        seed=seed,
+        denoise_strength=denoise_strength,
+        filename_prefix=filename_prefix,
+    )
+    return submit_prepared_workflow(settings, prepared)
+
+
+def stage_comfy_input_image(settings: Settings, source_image: Path) -> str:
+    if settings.comfy_input_dir is None:
+        raise RuntimeError("COMFY_INPUT_DIR must be set to use img2img feedback.")
+
+    if not source_image.exists():
+        raise RuntimeError(f"Feedback source image does not exist: {source_image}")
+
+    settings.comfy_input_dir.mkdir(parents=True, exist_ok=True)
+    destination = settings.comfy_input_dir / "alchemy_feedback.png"
+    copy2(source_image, destination)
+    return destination.name
 
 
 def submit_prepared_workflow(settings: Settings, workflow: Workflow) -> GenerationResult:

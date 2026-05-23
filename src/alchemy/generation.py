@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from shutil import copy2
 
+from PIL import Image
+
 from alchemy.comfy_client import ComfyClient
 from alchemy.config import Settings
 from alchemy.image_state import copy_current_image
@@ -78,6 +80,20 @@ def stage_comfy_input_image(settings: Settings, source_image: Path) -> str:
     destination = settings.comfy_input_dir / "alchemy_feedback.png"
     copy2(source_image, destination)
     return destination.name
+
+
+def ensure_initial_image(settings: Settings) -> Path:
+    settings.alchemy_initial_image.parent.mkdir(parents=True, exist_ok=True)
+    if settings.alchemy_initial_image.exists():
+        return settings.alchemy_initial_image
+
+    image = Image.new(
+        "RGB",
+        (settings.alchemy_initial_width, settings.alchemy_initial_height),
+        settings.alchemy_initial_color,
+    )
+    image.save(settings.alchemy_initial_image)
+    return settings.alchemy_initial_image
 
 
 def submit_prepared_workflow(

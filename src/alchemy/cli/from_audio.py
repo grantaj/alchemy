@@ -6,7 +6,7 @@ import time
 
 from alchemy.audio_chunks import ChunkingConfig, TranscriptChunk, chunk_segments
 from alchemy.config import load_settings
-from alchemy.generation import submit_img2img, submit_txt2img
+from alchemy.generation import ensure_initial_image, submit_img2img, submit_txt2img
 from alchemy.ollama_client import OllamaClient
 from alchemy.prompt_agent import refine_prompt
 from alchemy.prompt_profile import load_prompt_profile
@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--feedback",
         action="store_true",
-        help="Use img2img feedback after the first generated image.",
+        help="Use img2img feedback for every chunk, starting from the initial image.",
     )
     parser.add_argument("--denoise", type=float, help="Override img2img denoise strength.")
     parser.add_argument("--max-seconds", type=float, help="Chunk max duration override.")
@@ -78,7 +78,8 @@ def main() -> None:
     runtime = _RuntimeState(
         previous_prompt=args.previous_prompt,
         state_summary=args.state_summary,
-        previous_image=None,
+        previous_image=ensure_initial_image(settings) if args.feedback else None,
+        is_initial_image=bool(args.feedback),
     )
     if args.realtime:
         _process_realtime(chunks, runtime, settings, args, ollama, profile, negative_prompt)
@@ -125,10 +126,12 @@ class _RuntimeState:
         previous_prompt: str,
         state_summary: str,
         previous_image: Path | None,
+        is_initial_image: bool,
     ) -> None:
         self.previous_prompt = previous_prompt
         self.state_summary = state_summary
         self.previous_image = previous_image
+        self.is_initial_image = is_initial_image
 
 
 def _process_realtime(
@@ -301,12 +304,18 @@ def _process_chunk(
     use_feedback = args.feedback and runtime.previous_image is not None
     generation_started = time.monotonic()
     if use_feedback:
-        if args.denoise is None:
+        if runtime.is_initial_image:
+            denoise_strength = settings.alchemy_initial_denoise
+            denoise_label = f"initial {denoise_strength}"
+        elif args.denoise is None:
+            denoise_strength = None
             mode = "img2img feedback"
             denoise_label = "workflow default"
         else:
+            denoise_strength = args.denoise
             mode = "img2img feedback"
             denoise_label = str(args.denoise)
+        mode = "img2img feedback"
         if not args.monitor:
             print(f"Generation mode: {mode}, denoise={denoise_label}")
         result = submit_img2img(
@@ -315,7 +324,7 @@ def _process_chunk(
             negative_prompt=packet.negative_prompt,
             source_image=runtime.previous_image,
             seed=args.seed,
-            denoise_strength=args.denoise,
+            denoise_strength=denoise_strength,
             filename_prefix=prefix,
             quiet=args.monitor,
         )
@@ -338,6 +347,7 @@ def _process_chunk(
     runtime.previous_prompt = packet.positive_prompt
     runtime.state_summary = packet.state_summary
     runtime.previous_image = result.current_image
+    runtime.is_initial_image = False
 
     if args.monitor:
         current_image = str(result.current_image) if result.current_image is not None else "(not copied)"

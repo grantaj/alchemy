@@ -53,7 +53,7 @@ audio file
   -> realtime scheduling
   -> source audio playback
   -> Ollama prompt refinement
-  -> ComfyUI txt2img for the first chunk
+  -> ComfyUI img2img from a blank initial image for the first chunk
   -> ComfyUI img2img feedback for later chunks
   -> output/current.png
   -> browser viewer refresh

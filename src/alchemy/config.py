@@ -42,6 +42,14 @@ class Settings(BaseSettings):
         default=Path("output/current.png"),
         alias="ALCHEMY_CURRENT_IMAGE",
     )
+    alchemy_initial_image: Path = Field(
+        default=Path("output/initial.png"),
+        alias="ALCHEMY_INITIAL_IMAGE",
+    )
+    alchemy_initial_width: int = Field(default=512, alias="ALCHEMY_INITIAL_WIDTH")
+    alchemy_initial_height: int = Field(default=512, alias="ALCHEMY_INITIAL_HEIGHT")
+    alchemy_initial_color: str = Field(default="#000000", alias="ALCHEMY_INITIAL_COLOR")
+    alchemy_initial_denoise: float = Field(default=1.0, alias="ALCHEMY_INITIAL_DENOISE")
     alchemy_default_negative: str = Field(
         default="text, watermark, detail, low quality",
         alias="ALCHEMY_DEFAULT_NEGATIVE",

@@ -390,7 +390,7 @@ audio file
   -> source audio playback
   -> latest backpressure
   -> monitor logging
-  -> txt2img for first chunk
+  -> img2img from a blank initial image for first chunk
   -> img2img feedback for later chunks
 ```
 
@@ -463,6 +463,20 @@ ALCHEMY_BACKPRESSURE_MODE=latest
 ALCHEMY_DELAY_SCALE=1.0
 ALCHEMY_AUDIO_PLAYER=afplay
 ```
+
+In feedback mode, the performance path uses a single img2img workflow throughout.
+The first chunk starts from a generated blank image:
+
+```bash
+ALCHEMY_INITIAL_IMAGE=output/initial.png
+ALCHEMY_INITIAL_WIDTH=512
+ALCHEMY_INITIAL_HEIGHT=512
+ALCHEMY_INITIAL_COLOR=#000000
+ALCHEMY_INITIAL_DENOISE=1.0
+```
+
+Later chunks use the previous generated image and the img2img workflow's denoise
+value unless `--denoise` is passed.
 
 The chunker tries to keep chunks natural by using whisper.cpp word timestamps,
 silence gaps, duration limits, word-count limits, and punctuation boundaries.

@@ -1,16 +1,49 @@
 name = "default"
 
 style = """
-ink wash projection artwork, translucent washes, theatrical lighting, soft grain,
-high contrast, poetic abstraction, immersive installation image
+flat non-photographic mixed-media paper score, abstract process drawing,
+masked pigment, ruled graphite, rubbed charcoal, rough paper grain,
+hand-worked edges, high contrast, restrained poetic abstraction,
+consistent monochrome black ink and graphite on warm off-white paper,
+no camera realism, no photographed scene
 """
 
 system = """
-You transform spoken language into image-generation material for a live visual system.
-Do not illustrate the transcript literally.
-Write a brief poetic response first, then distill it into a concise image prompt.
-The image prompt must include the pinned visual style and concrete visual materials.
-Preserve continuity with the previous visual state when one is provided.
+You write for a live spoken-word visual system. Return JSON only.
+All JSON values must be plain strings except denoise_strength and reset. Do not
+use nested objects or arrays.
+
+Stage 1: write a brief poetic response. It should stand alone as a line or
+small stanza, and the sequence of responses should read as one poem. Do not
+summarize, quote, answer, or explain the transcript. Treat speech as pressure,
+rhythm, memory, absence, gesture, and resistance. Do not merely repeat the
+transcript. Avoid cliche and grandiosity.
+
+Stage 2: turn that same poetic response into a non-literal image prompt. The
+image must support the poem, not illustrate the poem or transcript. Do not
+invent a separate content anchor. Use the poetic response itself as the semantic
+bridge, translated into visible material evidence on paper.
+
+The visual style is fixed for the whole sequence. Start the positive prompt with
+the pinned style. Do not invent new media, genres, palettes, camera modes,
+surfaces, or art-school assignment formats. Keep one house style: monochrome
+black ink and graphite on warm off-white rough paper, flat image plane, masked
+pigment, ruled graphite, rubbed charcoal, erasure, pressure marks, blank paper.
+Only poetic content, composition, density, pressure, and local marks may change.
+
+Build the positive prompt in this order: pinned style; transformed poetic
+response as material evidence; composition; local material behavior. Include one specific composition
+choice and one material operation. Avoid recognizable subjects and direct nouns
+from the transcript or poem; translate them into compression, separation,
+fracture, accumulation, erasure, residue, abrasion, occlusion, negative space,
+scale, texture, rhythm, or spatial tension.
+
+Avoid: photorealism, camera/lens/studio language, smoky wash dominance, centered
+ink blots, clouds, blooms, splashes, marbling, Rorschach symmetry, generic
+stains, fantasy atmosphere, particles, fog, galaxies, portals, beams of light.
+Use previous continuity as context without changing the house style.
+Do not copy the previous positive_prompt unless the new poetic_response is truly
+the same.
 Return JSON only.
 Do not explain.
 """
@@ -25,16 +58,16 @@ Pinned visual style:
 Previous image prompt:
 {previous_prompt}
 
-Previous visual state:
+Previous continuity state:
 {state_summary}
 
 Return this exact JSON shape:
 {{
-  "poetic_response": "one or two evocative sentences responding to the transcript",
-  "positive_prompt": "compact stable diffusion prompt, one sentence, concrete visual language, includes the pinned visual style",
+  "poetic_response": "one or two short poetic lines; part of an accumulating poem",
+  "positive_prompt": "compact prompt starting with pinned style; transforms the poetic_response into visible material evidence; same house style; composition plus local material behavior; no literal subjects or camera language",
   "negative_prompt": "{negative_prompt}",
-  "state_summary": "short continuity summary for the next generation",
-  "denoise_strength": 0.45,
+  "state_summary": "brief continuity note: poem pressure plus current visual state",
+  "denoise_strength": 0.68,
   "reset": false
 }}
 """

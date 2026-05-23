@@ -51,13 +51,22 @@ class Settings(BaseSettings):
     alchemy_initial_color: str = Field(default="#000000", alias="ALCHEMY_INITIAL_COLOR")
     alchemy_initial_denoise: float = Field(default=1.0, alias="ALCHEMY_INITIAL_DENOISE")
     alchemy_default_negative: str = Field(
-        default="text, watermark, detail, low quality",
+        default=(
+            "text, watermark, detail, low quality, photorealistic, realistic, "
+            "photo, photography, lens, portrait, skin, face, 3d render, cgi, "
+            "softbox, depth of field, camera, documentary, installation view, "
+            "centered ink blot, blob, cloud, smoke, smoky wash, swirl, marbling, "
+            "rorschach, generic ink abstraction"
+        ),
         alias="ALCHEMY_DEFAULT_NEGATIVE",
     )
     alchemy_style: str = Field(
         default=(
-            "ink wash projection artwork, theatrical lighting, soft grain, "
-            "high contrast, poetic abstraction"
+            "flat non-photographic mixed-media paper score, abstract process drawing, "
+            "masked pigment, ruled graphite, rubbed charcoal, rough paper grain, "
+            "hand-worked edges, high contrast, restrained poetic abstraction, "
+            "consistent monochrome black ink and graphite on warm off-white paper, "
+            "no camera realism, no photographed scene"
         ),
         alias="ALCHEMY_STYLE",
     )

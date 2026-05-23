@@ -292,11 +292,17 @@ def _process_chunk(
     if args.monitor:
         print("poetic:")
         print(f"  {packet.poetic_response}")
+        if packet.content_anchor:
+            print("anchor:")
+            print(f"  {packet.content_anchor}")
         print("prompt:")
         print(f"  {packet.positive_prompt}")
     else:
         print("Poetic response:")
         print(f"  {packet.poetic_response}")
+        if packet.content_anchor:
+            print("Content anchor:")
+            print(f"  {packet.content_anchor}")
         print("Refined prompt:")
         print(f"  {packet.positive_prompt}")
 
@@ -308,9 +314,9 @@ def _process_chunk(
             denoise_strength = settings.alchemy_initial_denoise
             denoise_label = f"initial {denoise_strength}"
         elif args.denoise is None:
-            denoise_strength = None
+            denoise_strength = packet.denoise_strength
             mode = "img2img feedback"
-            denoise_label = "workflow default"
+            denoise_label = f"prompt {packet.denoise_strength}"
         else:
             denoise_strength = args.denoise
             mode = "img2img feedback"

@@ -118,7 +118,8 @@ WHISPER_CPP_HOST=http://127.0.0.1:8080
 WHISPER_CPP_INFERENCE_PATH=/inference
 ```
 
-The project uses this endpoint for file-based transcription.
+The project uses this endpoint for file-based and microphone phrase
+transcription.
 
 Install `ffmpeg` if you want to transcribe compressed audio such as `.m4a`:
 
@@ -149,6 +150,24 @@ uv sync
 
 This creates a local `.venv` and installs the package dependencies from
 `pyproject.toml`.
+
+For live microphone input, install the audio extras:
+
+```bash
+uv sync --extra audio
+```
+
+Microphone input also needs the native PortAudio runtime:
+
+```bash
+sudo apt install libportaudio2
+```
+
+On macOS:
+
+```bash
+brew install portaudio
+```
 
 ### 6. Configure local paths
 
@@ -217,7 +236,10 @@ example spoken poem
   -> ComfyUI image
 ```
 
-After that, microphone capture can be added as phrase-based transcription.
+Live microphone capture is implemented as phrase-based transcription. The
+controller records fixed microphone windows, sends each window to whisper.cpp,
+and processes each non-empty transcription through the same prompt and ComfyUI
+pipeline as file chunks.
 
 Other options may be useful later:
 
@@ -342,6 +364,25 @@ Backpressure modes:
 - `serial`: process every chunk in order, even if generation falls behind.
 - `latest`: when generation falls behind, skip stale chunks and process the newest chunk whose timestamp has passed.
 
+To run live microphone input directly:
+
+```bash
+uv run alchemy-from-mic --feedback --monitor
+```
+
+To run the demo path from the microphone:
+
+```bash
+uv run alchemy-demo --mic
+```
+
+Useful microphone overrides:
+
+```bash
+uv run alchemy-from-mic --list-devices
+uv run alchemy-demo --mic --phrase-seconds 6 --device 1 --backpressure latest
+```
+
 ## Viewer
 
 Start the local browser viewer:
@@ -437,7 +478,7 @@ The expected Ollama JSON response is:
   "positive_prompt": "...",
   "negative_prompt": "...",
   "state_summary": "...",
-  "denoise_strength": 0.45,
+  "denoise_strength": 0.68,
   "reset": false
 }
 ```
@@ -475,8 +516,9 @@ ALCHEMY_INITIAL_COLOR=#000000
 ALCHEMY_INITIAL_DENOISE=1.0
 ```
 
-Later chunks use the previous generated image and the img2img workflow's denoise
-value unless `--denoise` is passed.
+Later chunks use the prompt packet's `denoise_strength` unless `--denoise` is
+passed. The bundled feedback workflows default to `0.68`, which keeps some
+visual continuity while allowing each transcript chunk to move the image.
 
 The chunker tries to keep chunks natural by using whisper.cpp word timestamps,
 silence gaps, duration limits, word-count limits, and punctuation boundaries.

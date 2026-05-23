@@ -31,6 +31,7 @@ dev = [
 alchemy-demo = "alchemy.cli.demo:main"
 alchemy-doctor = "alchemy.cli.doctor:main"
 alchemy-from-audio = "alchemy.cli.from_audio:main"
+alchemy-from-mic = "alchemy.cli.from_mic:main"
 alchemy-refine = "alchemy.cli.refine_prompt:main"
 alchemy-submit = "alchemy.cli.submit_prompt:main"
 alchemy-transcribe = "alchemy.cli.transcribe_audio:main"

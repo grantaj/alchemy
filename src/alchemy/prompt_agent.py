@@ -53,9 +53,9 @@ def refine_prompt(
     packet = PromptPacket.model_validate(_loads_json_object(response))
     content_anchor = _poetic_response_anchor(packet.poetic_response)
     positive_prompt = _ensure_style_prefix(packet.positive_prompt, pinned_style)
-    positive_prompt = _ensure_content_anchor(
+    positive_prompt = _ensure_poetic_concept(
         positive_prompt,
-        content_anchor=content_anchor,
+        poetic_response=content_anchor,
         pinned_style=pinned_style,
     )
     return packet.model_copy(
@@ -73,32 +73,38 @@ def _ensure_style_prefix(positive_prompt: str, pinned_style: str) -> str:
 
     normalized_prompt = positive_prompt.casefold()
     normalized_style = pinned_style.casefold()
-    style_anchor = normalized_style.split(",", maxsplit=1)[0].strip()
-    if normalized_style in normalized_prompt or (
-        style_anchor and normalized_prompt.startswith(style_anchor)
-    ):
+    if normalized_prompt.startswith(normalized_style):
         return positive_prompt
+
+    style_anchor = pinned_style.split(",", maxsplit=1)[0].strip()
+    if style_anchor and normalized_prompt.startswith(style_anchor.casefold()):
+        suffix = positive_prompt[len(style_anchor) :].lstrip(" ,;:")
+        if suffix.casefold().startswith("with "):
+            suffix = suffix[5:]
+        if suffix:
+            return f"{pinned_style}, {suffix}"
+        return pinned_style
 
     return f"{pinned_style}, {positive_prompt}"
 
 
-def _ensure_content_anchor(
+def _ensure_poetic_concept(
     positive_prompt: str,
     *,
-    content_anchor: str,
+    poetic_response: str,
     pinned_style: str,
 ) -> str:
-    if not content_anchor:
+    if not poetic_response:
         return positive_prompt
 
-    anchor_phrase = f"visible material evidence of {content_anchor}"
-    if content_anchor.casefold() in positive_prompt.casefold():
+    concept = f"poetic concept: {poetic_response}"
+    if poetic_response.casefold() in positive_prompt.casefold():
         return positive_prompt
 
     if pinned_style and positive_prompt.startswith(pinned_style):
-        return positive_prompt.replace(pinned_style, f"{pinned_style}, {anchor_phrase}", 1)
+        return positive_prompt.replace(pinned_style, f"{pinned_style}, {concept}", 1)
 
-    return f"{anchor_phrase}, {positive_prompt}"
+    return f"{concept}, {positive_prompt}"
 
 
 def _poetic_response_anchor(poetic_response: str) -> str:

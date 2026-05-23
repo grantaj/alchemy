@@ -290,16 +290,18 @@ def _process_chunk(
     refine_duration = time.monotonic() - refine_started
 
     if args.monitor:
-        print("poetic:")
-        print(f"  {packet.poetic_response}")
+        if packet.poetic_response:
+            print("poetic:")
+            print(f"  {packet.poetic_response}")
         if packet.content_anchor:
             print("anchor:")
             print(f"  {packet.content_anchor}")
         print("prompt:")
         print(f"  {packet.positive_prompt}")
     else:
-        print("Poetic response:")
-        print(f"  {packet.poetic_response}")
+        if packet.poetic_response:
+            print("Poetic response:")
+            print(f"  {packet.poetic_response}")
         if packet.content_anchor:
             print("Content anchor:")
             print(f"  {packet.content_anchor}")

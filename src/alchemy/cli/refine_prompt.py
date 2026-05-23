@@ -37,9 +37,14 @@ def main() -> None:
         print(json.dumps(packet.model_dump(), indent=2))
         return
 
-    print("Poetic response:")
-    print(packet.poetic_response)
-    print()
+    if packet.poetic_response:
+        print("Poetic response:")
+        print(packet.poetic_response)
+        print()
+    if packet.content_anchor:
+        print("Content anchor:")
+        print(packet.content_anchor)
+        print()
     print("Image prompt:")
     print(packet.positive_prompt)
     print()

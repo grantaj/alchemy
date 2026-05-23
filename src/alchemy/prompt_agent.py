@@ -51,13 +51,8 @@ def refine_prompt(
     )
     response = client.generate_json(system=profile.system, prompt=prompt)
     packet = PromptPacket.model_validate(_loads_json_object(response))
-    content_anchor = _poetic_response_anchor(packet.poetic_response)
+    content_anchor = _semantic_anchor(packet.poetic_response, transcription=transcription)
     positive_prompt = _ensure_style_prefix(packet.positive_prompt, pinned_style)
-    positive_prompt = _ensure_poetic_concept(
-        positive_prompt,
-        poetic_response=content_anchor,
-        pinned_style=pinned_style,
-    )
     return packet.model_copy(
         update={
             "content_anchor": content_anchor,
@@ -88,27 +83,9 @@ def _ensure_style_prefix(positive_prompt: str, pinned_style: str) -> str:
     return f"{pinned_style}, {positive_prompt}"
 
 
-def _ensure_poetic_concept(
-    positive_prompt: str,
-    *,
-    poetic_response: str,
-    pinned_style: str,
-) -> str:
-    if not poetic_response:
-        return positive_prompt
-
-    concept = f"poetic concept: {poetic_response}"
-    if poetic_response.casefold() in positive_prompt.casefold():
-        return positive_prompt
-
-    if pinned_style and positive_prompt.startswith(pinned_style):
-        return positive_prompt.replace(pinned_style, f"{pinned_style}, {concept}", 1)
-
-    return f"{concept}, {positive_prompt}"
-
-
-def _poetic_response_anchor(poetic_response: str) -> str:
-    return " ".join(poetic_response.split())
+def _semantic_anchor(poetic_response: str, *, transcription: str) -> str:
+    source = poetic_response or transcription
+    return " ".join(source.split())
 
 
 def _loads_json_object(text: str) -> dict[str, object]:

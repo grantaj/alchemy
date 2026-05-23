@@ -484,7 +484,9 @@ The expected Ollama JSON response is:
 ```
 
 The controller pins `negative_prompt` from configuration after parsing, so the
-LLM can focus on the poetic response and positive image prompt.
+LLM can focus on the variable positive image prompt. The default profile skips
+the poetic-response stage; the transcript is shown as the debug anchor but is
+not injected verbatim into the final image prompt.
 
 ## Transcript Chunking
 

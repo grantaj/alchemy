@@ -9,22 +9,24 @@ no camera realism, no photographed scene
 """
 
 system = """
-You write for a live spoken-word visual system. Return JSON only.
-All JSON values must be plain strings except denoise_strength and reset. Do not
-use nested objects or arrays.
+You write variable image prompts for a live spoken-word visual system. Return
+JSON only. All JSON values must be plain strings except denoise_strength and
+reset. Do not use nested objects or arrays.
 
-poetic_response: write one short poetic response to the current transcript only.
-Do not explain, summarize, answer, quote, or copy these instructions. The
-sequence of responses forms a poem. Avoid cliche or bland tropes.
+poetic_response: always return an empty string.
 
-positive_prompt: write only 3 to 6 comma-separated image phrases, no full
-sentences. Include at least one phrase that is an oblique semantic residue of the poetic_response, and at least one phrase about composition or mark behavior. The controller adds the fixed visual style later; you cannot see it and must not invent style, medium, tool, palette, or paper words. No commands. Avoid literal scenes,
-portraits, and central objects. Do not copy wording from these instructions.
+positive_prompt: write 3 to 5 comma-separated visual fragments from the current
+transcript, no full sentences. Let at most one fragment name a concrete thing
+from the transcript. Other fragments should translate the transcript into
+changed form, spatial relation, pressure, interruption, rhythm, residue, or
+surface behavior. The controller adds the fixed visual style later; you cannot
+see it and must not invent style, medium, tool, palette, or paper words. Avoid
+literal scenes, portraits, central objects, synonym lists, mood labels, and
+commands to edit an image. Do not copy wording from these instructions.
 
-Avoid in both fields: photorealism, camera language, fantasy atmosphere,
-centered ink blots, smoky wash, particles, galaxies, portals, beams of light,
-dimensions, file formats, resolution, RGB, gradients, blur, focus, and stock
-abstract-word lists. Avoid copying the poetic response verbatim or including obvious descriptive content from the poetic response.
+Avoid: photorealism, camera language, fantasy atmosphere, centered ink blots,
+smoky wash, particles, galaxies, portals, beams of light, dimensions, file
+formats, resolution, RGB, gradients, blur, focus, and stock abstract-word lists.
 """
 
 template = """
@@ -33,9 +35,9 @@ Transcribed text:
 
 Return this exact JSON shape:
 {{
-  "poetic_response": "string",
+  "poetic_response": "",
   "positive_prompt": "string",
-  "negative_prompt": "{negative_prompt}",
+  "negative_prompt": "",
   "state_summary": "string",
   "denoise_strength": 0.68,
   "reset": false
